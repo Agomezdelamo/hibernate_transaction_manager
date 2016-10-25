@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<!-- Generated 09-ago-2013 12:20:37 by Hibernate Tools 3.4.0.CR1 -->
+<hibernate-mapping>
+    <class name="com.javierferrandiz.hibernate.data.entity.Habitacion" table="HABITACION" select-before-update="true">
+        <id name="id" type="java.lang.Integer">
+            <column name="ID" scale="10" not-null="true"/>
+            <generator class="native" />
+        </id>
+        <property name="nuHabitacion" type="java.lang.Integer">
+            <column name="NUHABITACION" scale="3" not-null="true" unique="true"/>
+        </property>
+        <property name="tipo" type="java.lang.String">
+            <column name="TIPO" length="1"/>
+        </property>
+        <property name="banio" type="java.lang.String">
+            <column name="BANIO" length="2"/>
+        </property>
+        <property name="precio" type="java.lang.Double">
+            <column name="PRECIO" scale="7" precision="2"/>
+        </property>
+        <many-to-one name="alojamiento" class="com.javierferrandiz.hibernate.data.entity.Alojamiento" fetch="join" cascade="none" lazy="false">
+            <column name="IDALOJAMIENTO" scale="10" unique="true"/>
+        </many-to-one>
+    </class>
+</hibernate-mapping>

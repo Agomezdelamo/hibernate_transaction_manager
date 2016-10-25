@@ -1,0 +1,115 @@
+
+Spring proporciona una serie de gestores para administrar las transacciones por nosotros, en este caso nos centramos en el gestor de transacciones de hibernate, que se va a ocupar de gestionar instancias org.hibernate.Transaction, el gestor se ocupará de iniciar la transacción, comitir los cambios si todo ha ido bien, o deshacerlos en caso de ocurrir alguna incidencia.
+
+Spring puede configurar un gestor de transacciones de un modo declarativo, mediante anotaciones o programaticamente. El inconveniente de configurarlo programaticamente es que vamos a obtener un código muy acoplado con la solución de Spring, el modo más conveniente y por el cuál vamos a empezar el declarativo, contiuaremos explicando la configuración mediante anotaciones y acabaremos con un ejemplo resuelto programaticamente.
+
+Configuración declarativa
+La configuración del gestor de transacciones de un modo declarativo se apoya en la programación orientada en aspectos(AOP), ya que este va a interceptar los posibles métodos que van a estar bajo una transacción. Comenzamos declarando los espacios de nombres de configuración de Spring necesarios.
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context-4.0.xsd
+       http://www.springframework.org/schema/aop
+       http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+       http://www.springframework.org/schema/tx
+       http://www.springframework.org/schema/tx/spring-tx-4.0.xsd">
+
+    ....
+
+</beans>
+Una vez añadidas los espacios de nombres procedemos a declarar las etiquetas necesarias.
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context-4.0.xsd
+       http://www.springframework.org/schema/aop
+       http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+       http://www.springframework.org/schema/tx
+       http://www.springframework.org/schema/tx/spring-tx-4.0.xsd">
+
+    <tx:advice id="txAlojamientoDAO" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="find*" propagation="REQUIRED" read-only="true"/>
+            <tx:method name="actualizar*" propagation="REQUIRES_NEW" read-only="false" rollback-for="java.lang.Throwable.class"/>
+        </tx:attributes>
+    </tx:advice>
+
+    <aop:config>
+        <aop:pointcut expression="execution(* com.javierferrandiz.hibernate.dao.AlojamientoDAO.*(..))" id="corte-alojamiento"/>
+        <aop:advisor pointcut-ref="corte-alojamiento" advice-ref="txAlojamientoDAO">
+    </aop:config>
+
+
+    <bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+        <property name="sessionFactory" ref="sessionFactory"></property>
+    </bean>
+
+
+
+</beans>
+Gracias a la etiquetas <tx:advice ..>..</tx:advice> vamos definir el tipo de la transacción y sobre que métodos. Posteriormente definimos un aspecto <aop:config>..</aop:config> que lo que hará es interceptar lo métodos especificados para luego con ayuda de tx:advice ejecutar el método bajo una transacción.
+Puede descargar el ejemplo en el siguiente enlace:
+
+
+Configuración mediante anotaciones
+Para el uso de anotaciones se reduce algo más la configuración, a parte debemos anotar los métodos que se ejecutan bajo una transacción con la anotacion @Transactional
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context-4.0.xsd>
+
+    <!-- Indicamos que analice todos los beans con anotaciones @Transactional -->
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+    <bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+        <property name="sessionFactory" ref="sessionFactory"></property>
+    </bean>
+
+    ....
+
+</beans>
+
+public class AlojamientoDAO {
+
+    @SuppressWarnings({"unchecked"})
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRED)
+    public List<Alojamiento> findAllAlojamientos() {
+        return (List<Alojamiento>) this.hibernateTemplate.find("SELECT a FROM Alojamiento a");
+    }
+	
+    @SuppressWarnings({"unchecked"})
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRED)
+    public List<Alojamiento> findAlojamientosByNumHabitaciones(Integer numHabits) {
+        DetachedCriteria detachedCriteria = DetachedCriteria.forClass(Alojamiento.class).add(Restrictions.eq("numHabit", numHabits));
+        List<Alojamiento> alojamientos = (List<Alojamiento>)this.hibernateTemplate.findByCriteria(detachedCriteria);
+        return alojamientos;
+    }
+	
+    @Transactional(readOnly = false, propagation = Propagation.REQUIRES_NEW, rollbackFor=java.lang.Throwable.class)
+    public void actualizarAlojamiento(Alojamiento alojamiento) {
+        this.hibernateTemplate.saveOrUpdate(alojamiento);
+    }
+
+    ....
+
+}
